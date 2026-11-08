@@ -3,6 +3,7 @@ import com.grupo5.citasmedicas.entity.Cita;
 import com.grupo5.citasmedicas.exception.AppointmentConflictException;
 import com.grupo5.citasmedicas.exception.ResourceNotFoundException;
 import com.grupo5.citasmedicas.repository.CitaRepository;
+import com.grupo5.citasmedicas.repository.MedicoRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -11,10 +12,16 @@ import java.util.List;
 @Service
 public class CitaService {
 
-    private final CitaRepository citaRepository;
+    private static final String ESTADO_PROGRAMADA = "PROGRAMADA";
+    private static final String ESTADO_CANCELADA = "CANCELADA";
 
-    public CitaService(CitaRepository citaRepository) {
+    private final CitaRepository citaRepository;
+    private final MedicoRepository medicoRepository;
+
+    public CitaService(CitaRepository citaRepository,
+                       MedicoRepository medicoRepository) {
         this.citaRepository = citaRepository;
+        this.medicoRepository = medicoRepository;
     }
 
     public List<Cita> listar() {
@@ -42,6 +49,10 @@ public class CitaService {
 
             throw new AppointmentConflictException(
                     "El médico ya tiene una cita en ese horario");
+        }
+
+        if (cita.getEstado() == null || cita.getEstado().isBlank()) {
+            cita.setEstado(ESTADO_PROGRAMADA);
         }
 
         return citaRepository.save(cita);
@@ -74,5 +85,29 @@ public class CitaService {
         obtenerPorId(id);
 
         citaRepository.deleteById(id);
+    }
+
+    public Cita cancelar(Long id) {
+
+        Cita cita = obtenerPorId(id);
+
+        if (ESTADO_CANCELADA.equalsIgnoreCase(cita.getEstado())) {
+            throw new AppointmentConflictException(
+                    "La cita ya se encuentra cancelada");
+        }
+
+        cita.setEstado(ESTADO_CANCELADA);
+
+        return citaRepository.save(cita);
+    }
+
+    public List<Cita> agendaPorMedico(Long medicoId) {
+
+        if (!medicoRepository.existsById(medicoId)) {
+            throw new ResourceNotFoundException("Médico no encontrado");
+        }
+
+        return citaRepository
+                .findByMedicoIdOrderByFechaAscHoraAsc(medicoId);
     }
 }
