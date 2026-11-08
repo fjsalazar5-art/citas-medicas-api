@@ -1,0 +1,46 @@
+name: CI Pipeline - Citas Medicas API
+
+on:
+  push:
+    branches: [ "main", "feature/**" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: citas_medicas_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: Fjsalazar5
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: 1. Obtener el codigo del repositorio
+        uses: actions/checkout@v4
+
+      - name: 2. Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: 3. Dar permisos de ejecucion a Maven Wrapper
+        run: chmod +x mvnw
+
+      - name: 4. Compilar el proyecto
+        run: ./mvnw clean compile -B
+
+      - name: 5. Ejecutar pruebas automatizadas
+        run: ./mvnw test -B
